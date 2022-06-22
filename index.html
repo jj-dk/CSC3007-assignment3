@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      .main {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: lightgrey;
+      }
+      div.tooltip {
+        position: absolute;
+        padding: 7px;
+        font-size: 0.8em;
+        pointer-events: none;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main">
+      <h1>SG population map</h1>
+      <svg></svg>
+    </div>
+
+    <script src="https://d3js.org/d3.v6.js"></script>
+    <script src="http://colorbrewer2.org/export/colorbrewer.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+
+    <script>
+      let width = 1000,
+        height = 600;
+
+      let svg = d3.select("svg").attr("viewBox", "0 0 " + width + " " + height);
+
+      let colorScale = d3
+        .scaleQuantize()
+        .range([
+          "#ffffcc",
+          "#ffeda0",
+          "#fed976",
+          "#feb24c",
+          "#fd8d3c",
+          "#fc4e2a",
+          "#e31a1c",
+          "#bd0026",
+          "#800026",
+        ]);
+
+      const tooltip = d3
+        .select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+      const dict = {};
+      var biggestPopulation = 0;
+
+      // create a tooltip
+      var Tooltip = d3
+        .select("body")
+        .append("div")
+        .style("opacity", 0)
+        .attr("class", "tooltip")
+        .style("background-color", "white")
+        .style("border", "solid")
+        .style("border-width", "2px")
+        .style("border-radius", "5px")
+        .style("padding", "5px")
+        .style("position", "absolute");
+
+      // Load external data
+      Promise.all([
+        d3.json("sgmap.json"),
+        d3.csv("population2021.csv", function (d) {
+          //data.set(d.code, +d.pop)
+          dict[d.Subzone.toUpperCase()] = d.Population;
+          if (
+            d.Population != "-" &&
+            parseInt(d.Population) > biggestPopulation
+          ) {
+            biggestPopulation = parseInt(d.Population);
+          }
+        }),
+      ]).then((data) => {
+        colorScale.domain([0, biggestPopulation]);
+
+        let mouseOver = function (event, d) {
+          d3.selectAll(".Country")
+            .transition()
+            .duration(200)
+            .style("opacity", 0.5);
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .style("opacity", 1)
+            .style("stroke", "black");
+          tooltip
+            .style("left", event.pageX + 15 + "px")
+            .style("top", event.pageY - 28 + "px")
+            .transition()
+            .duration(400)
+            .style("opacity", 1)
+            .text(d.properties.Name + ": " + dict[d.properties.Name]);
+        };
+
+        let mouseLeave = function (event, d) {
+          d3.selectAll(".Country")
+            .transition()
+            .duration(200)
+            .style("opacity", 0.8);
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .style("stroke", "transparent");
+        };
+
+        // Map and projection
+        var projection = d3
+          .geoMercator()
+          .center([103.851959, 1.29027])
+          .fitExtent(
+            [
+              [20, 20],
+              [980, 580],
+            ],
+            data[0]
+          );
+
+        let geopath = d3.geoPath().projection(projection);
+
+        svg
+          .append("g")
+          .attr("id", "districts")
+          .selectAll("path")
+          .data(data[0].features)
+          .enter()
+          .append("path")
+          .attr("d", geopath)
+          .attr("fill", function (d) {
+            total = dict[d.properties.Name] || 0;
+            if (total == "-") {
+              total = 0;
+            }
+            return colorScale(total);
+          })
+          .on("mouseover", mouseOver)
+          .on("mouseleave", mouseLeave);
+
+        let legend = d3
+          .legendColor()
+          .labelFormat(d3.format(".2s"))
+          .title("Population Size")
+          .scale(colorScale);
+        svg
+          .append("g")
+          .attr("class", "legend")
+          .attr("transform", "translate(" + 700 + "," + 700 / 2 + ")")
+          .call(legend);
+      });
+    </script>
+  </body>
+</html>
