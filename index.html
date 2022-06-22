@@ -88,16 +88,9 @@
           ) {
             biggestPopulation = parseInt(d.Population);
           }
-
-          console.log("test " + d.Subzone.toUpperCase());
-          console.log("new biggest = " + biggestPopulation);
         }),
       ]).then((data) => {
-        console.log(data[0]);
-        console.log(data[1]);
-
         colorScale.domain([0, biggestPopulation]);
-        console.log("size = " + biggestPopulation);
 
         let mouseOver = function (event, d) {
           d3.selectAll(".Country")
@@ -116,7 +109,6 @@
             .duration(400)
             .style("opacity", 1)
             .text(d.properties.Name + ": " + dict[d.properties.Name]);
-          console.log("this is name " + d.properties.Name);
         };
 
         let mouseLeave = function (event, d) {
@@ -154,7 +146,6 @@
           .attr("d", geopath)
           .attr("fill", function (d) {
             total = dict[d.properties.Name] || 0;
-            console.log("this is total " + total);
             if (total == "-") {
               total = 0;
             }
